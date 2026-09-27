@@ -1,109 +1,75 @@
 # MoodMeter
 
-Natural language processing tool and web dashboard for analyzing customer reviews. It scores sentiment polarity, detects department themes, flags urgent safety hazards, and routes issues to the right team.
+A simple tool to analyze customer reviews, detect whether feedback is positive or negative, catch urgent safety issues (like overheating or fire risks), and send each ticket to the right department.
 
-Built to run 100% self-contained with zero server dependencies on Vercel and zero paid subscriptions.
-
----
-
-## Key Features
-
-- Continuous Polarity Scoring: Scores review text from -1.0 (very negative) to +1.0 (very positive) with negation and intensifier support.
-- Department Categorization: Flags themes across 6 operational areas: Product Quality, App & Software, Customer Service, Shipping & Delivery, Pricing & Billing, and Safety & Health.
-- Safety Hazard Interception: Instantly catches critical defect words (fire, smoke, shock, burn, overheat, exploded) and triggers immediate high-priority routing.
-- Dual-Mode Architecture: Runs locally on a Python Flask backend (http://127.0.0.1:5000), or as a zero-server Edge app on Vercel using client-side JavaScript.
-- Clean Earth Palette: Styled in a high-contrast executive theme (rust, amber, forest green, charcoal on warm ivory).
+Runs locally with Python and Flask, or directly on Vercel as a zero-server static site.
 
 ---
 
-## System Architecture
+## Features
+
+- Sentiment scoring from -1.0 (very negative) to +1.0 (very positive).
+- Auto-routes to 6 departments: Product Quality, App & Software, Customer Service, Shipping, Billing, and Safety & Health.
+- Safety hazard alerts: Catches dangerous words like fire, smoke, burn, or overheat and flags them as urgent immediately.
+- Works without a backend on Vercel using client-side JavaScript.
+- Clean, minimal earth tone interface.
+
+---
+
+## Architecture & How It Works
+
+Here is the simple flow of how each review moves through the system:
 
 ```
-+-----------------------------------------------+
-|              Customer Review Text             |
-|        (Web form, CSV upload, or API)         |
-+-----------------------------------------------+
-                       |
-                       v
-+-----------------------------------------------+
-|           1. Safety Hazard Check              |
-|   Keywords: fire, smoke, overheat, burn, shock|
-+-----------------------------------------------+
-       |                                 |
- (Hazard Found)                    (No Hazard)
-       |                                 |
-       v                                 v
-+----------------------+     +-----------------------+
-| Urgent Priority (P1) |     | 2. Sentiment Scoring  |
-| Route directly to:   |     | Polarity: -1.0 to +1.0|
-| Legal & Safety Team  |     +-----------------------+
-+----------------------+                 |
-                                         v
-                             +-----------------------+
-                             | 3. Department Match   |
-                             | App, Hardware, Support|
-                             +-----------------------+
-                                         |
-                                         v
-                             +-----------------------+
-                             | 4. Standard Routing   |
-                             | Normal Priority (P2)  |
-                             +-----------------------+
+Incoming Review (Web Form, CSV Upload, or API)
+      |
+      v
+Check for Safety Hazards (fire, smoke, overheat, shock)
+      |-- Found Hazard -> Mark as URGENT (P1) and route to Legal & Safety team
+      |-- No Hazard    -> Continue to sentiment analysis
+      v
+Score Sentiment with TextBlob (-1.0 to +1.0)
+      v
+Match Department by Keywords (Hardware, Mobile QA, Support, Logistics, Billing)
+      v
+Output Result to Dashboard / API Response
 ```
 
-### How the Pipeline Works
+### Breakdown of the Pipeline
 
-1. Review Ingestion:
-   Accepts text input from single submissions, bulk CSV file uploads, or JSON REST API requests.
-
-2. Safety Hazard Scan:
-   Scans text for critical safety words (such as fire, smoke, burn, overheat, shock). If detected, it bypasses regular queues, tags the review as Urgent (P1), and assigns it to Legal and Safety Compliance.
-
-3. Sentiment Scoring:
-   Evaluates sentiment on a scale from -1.0 to +1.0:
-   - Positive: Polarity >= +0.10
-   - Neutral: -0.10 < Polarity < +0.10
-   - Negative: Polarity <= -0.10
-
-4. Department Categorization:
-   Matches keywords against 6 operational teams:
-   - Safety & Health: Overheating, smoke, physical defects
-   - Product Quality: Hardware durability, build finish, audio quality
-   - App & Software: App crashes, Bluetooth dropouts, sync errors
-   - Customer Service: Support response times, agent helpfulness
-   - Shipping & Delivery: Transit delays, damaged packaging
-   - Pricing & Billing: Subscriptions, unexpected charges, refunds
-
-5. Dual-Mode Execution:
-   - Local Mode: Uses app.py with Flask and TextBlob for server-side processing.
-   - Vercel Serverless Mode: Uses an embedded client-side JavaScript engine inside static/engine.js. All scoring runs in the browser in under 1ms with zero backend server required.
+1. Safety Check First: If a customer reports something burning, smoking, or sparking, we bypass normal queues right away. The review gets tagged as urgent and routed straight to Legal & Safety Compliance.
+2. Sentiment Analysis: Uses TextBlob to score polarity from -1.0 to +1.0. Scores of 0.1 or higher are positive, -0.1 or lower are negative, and the rest are neutral.
+3. Department Matching: Looks for keywords to figure out which team should take action (for example, app crashes go to Mobile QA, transit delays go to Logistics).
+4. Dual-Mode Setup:
+   - Local: Runs via app.py using Flask and TextBlob at http://127.0.0.1:5000.
+   - Vercel: Runs entirely inside the browser using JavaScript (static/engine.js). It requires zero backend hosting or server configuration.
 
 ---
 
-## Local Setup & Quick Start
+## Running Locally
 
-### 1. Clone the Repository
+### 1. Clone the repo
 ```bash
 git clone https://github.com/keshav-x/MoodMeter.git
 cd MoodMeter
 ```
 
-### 2. (Optional) Create Virtual Environment
+### 2. Set up virtual environment (optional)
 ```bash
 python -m venv venv
 # Windows:
 venv\Scripts\activate
-# macOS/Linux:
+# Mac/Linux:
 source venv/bin/activate
 ```
 
-### 3. Install Dependencies
+### 3. Install requirements
 ```bash
 pip install -r requirements.txt
 python -m textblob.download_corpora
 ```
 
-### 4. Run the Local Server
+### 4. Start the app
 ```bash
 python app.py
 ```
@@ -111,59 +77,38 @@ Open http://127.0.0.1:5000 in your browser.
 
 ---
 
-## How to Deploy on Vercel (Zero Server Needed)
+## Deploying to Vercel (No Server Required)
 
-MoodMeter runs on Vercel without needing any backend server, subscription, or container:
+This project can be deployed straight to Vercel without setting up a backend server or database:
 
-1. Push or fork this repository to your GitHub account.
-2. Log in to Vercel (https://vercel.com) and click "Add New Project".
-3. Import the MoodMeter repository.
-4. Leave build settings as default (Framework Preset: Other, Build Command: empty, Output Directory: ./).
-5. Click "Deploy".
+1. Push or fork this repo to your GitHub account.
+2. Go to Vercel (https://vercel.com) and click Add New Project.
+3. Select MoodMeter.
+4. Keep all build settings as default (Framework: Other, Build command: blank, Output directory: ./).
+5. Click Deploy.
 
-Vercel serves index.html and static files directly from its global Edge network.
+Vercel will serve index.html and the static assets directly. The JavaScript engine handles all analysis in the browser.
 
 ---
 
-## REST API Specification (When Running Locally)
+## API Endpoints (Local Flask)
 
-### 1. Analyse Single or Batch Reviews
-- Endpoint: POST /api/analyse
-- Payload:
+### Analyze a Review
+- POST /api/analyse
+- Body:
   ```json
   {
     "review": {
-      "text": "The charger got burning hot and emitted smoke overnight.",
+      "text": "The charger got burning hot and started smoking.",
       "product": "SmartWatch X1"
     }
   }
   ```
-- Response:
-  ```json
-  {
-    "count": 1,
-    "results": [
-      {
-        "product": "SmartWatch X1",
-        "sentiment": {
-          "label": "Negative",
-          "polarity": -0.38
-        },
-        "themes": ["Safety & Health"],
-        "urgency": {
-          "is_urgent": true,
-          "explanation": "Flagged as urgent: safety/health triggers detected."
-        },
-        "suggested_team": "Legal and Safety Compliance",
-        "triage_explanation": "Flagged: safety hazard detected. Immediate routing to Legal and Safety Compliance."
-      }
-    ]
-  }
-  ```
+- Returns the polarity score, department tag, urgency flag, and assigned team.
 
-### 2. Feedback Feed & Summary
-- GET /api/reviews: List analysed reviews with optional query filters (?sentiment=negative, ?urgent=true).
-- GET /api/summary: Aggregate distribution metrics across sentiment, urgency, and topic themes.
+### Get Stored Reviews & Summary
+- GET /api/reviews: Returns list of processed reviews (supports ?sentiment=negative or ?urgent=true).
+- GET /api/summary: Returns breakdown of sentiment counts, urgency percentage, and top topics.
 
 ---
 
@@ -171,21 +116,21 @@ Vercel serves index.html and static files directly from its global Edge network.
 
 ```
 MoodMeter/
-├── index.html                  # Standalone Vercel Edge frontend
-├── vercel.json                 # Vercel deployment configuration
-├── app.py                      # Flask REST API and NLP pipeline
-├── requirements.txt            # Minimal dependencies (Flask, TextBlob)
-├── README.md                   # Project documentation
+├── index.html                  # Main dashboard page
+├── vercel.json                 # Vercel static hosting config
+├── app.py                      # Flask backend and NLP logic
+├── requirements.txt            # Python dependencies
+├── README.md                   # Documentation
 ├── static/
-│   ├── style.css               # Executive Earth design system (CSS)
-│   └── engine.js               # Client-side triage and NLP engine (JS)
+│   ├── style.css               # Dashboard styling
+│   └── engine.js               # Client-side analysis engine for Vercel
 └── sample_data/
-    ├── sample_reviews.json     # Curated test reviews
-    └── sample_reviews.csv      # CSV batch intake sample
+    ├── sample_reviews.json     # Test reviews
+    └── sample_reviews.csv      # Test CSV batch
 ```
 
 ---
 
 ## Author
 
-Developed by Keshav Chaudhary (https://github.com/keshav-x).
+Keshav Chaudhary (https://github.com/keshav-x)
