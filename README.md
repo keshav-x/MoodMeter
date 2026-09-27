@@ -1,8 +1,5 @@
 # MoodMeter: Brand Sentiment Intelligence and Automated Triage Platform
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
-[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
-[![Vercel Ready](https://img.shields.io/badge/Vercel-Deployed-black.svg)](https://vercel.com)
 
 A high-accuracy, explainable Natural Language Processing (NLP) system and interactive web console for ingesting customer reviews, scoring sentiment polarity, detecting operational themes, and flagging critical safety hazards for automated team routing.
 
