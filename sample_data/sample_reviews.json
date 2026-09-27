@@ -1,0 +1,37 @@
+[
+  {
+    "id": "R001",
+    "product": "AudioMax 500",
+    "source": "App Store",
+    "date": "2026-06-15",
+    "text": "The audio clarity and active noise cancellation are superb. Battery lasted through an entire 14-hour flight. Highly recommend!"
+  },
+  {
+    "id": "R002",
+    "product": "FitBand Pro",
+    "source": "Google Play",
+    "date": "2026-06-18",
+    "text": "The mobile app refuses to sync my step count and crashes every time I open Bluetooth settings. Very frustrating bug."
+  },
+  {
+    "id": "R003",
+    "product": "SmartWatch X1",
+    "source": "Amazon Review",
+    "date": "2026-06-22",
+    "text": "Safety alert: the charging port got burning hot and emitted a burning smell while plugged into the wall adapter overnight!"
+  },
+  {
+    "id": "R004",
+    "product": "SmartWatch X1",
+    "source": "Website Support",
+    "date": "2026-06-25",
+    "text": "Been waiting 3 weeks for my delivery with zero tracking updates. Customer support has not replied to my emails."
+  },
+  {
+    "id": "R005",
+    "product": "AudioMax 500",
+    "source": "Email Inquiry",
+    "date": "2026-06-28",
+    "text": "Can I connect these headphones to two devices simultaneously via multipoint bluetooth? Please clarify battery specs."
+  }
+]

@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MoodMeter - Customer Feedback Sentiment & Triage Classifier</title>
+    <style>
+        :root {
+            --bg-canvas: #FAF8F5;
+            --bg-card: rgba(255, 255, 255, 0.94);
+            --text-heading: #20162B;
+            --text-body: #3D3846;
+            --text-muted: #7A7585;
+            --border: #E8E3DA;
+            --border-focus: #DE5D43;
+            --accent-coral: #DE5D43;
+            --accent-peach: #F87E56;
+            --accent-magenta: #D0257B;
+            --accent-plum: #20162B;
+            --positive: #1B7A3E;
+            --positive-bg: #EBF7EE;
+            --negative: #BD2130;
+            --negative-bg: #FBEBEB;
+            --neutral: #5A6268;
+            --neutral-bg: #F0ECE4;
+            --urgent: #BD2130;
+            --urgent-bg: #FBEBEB;
+            --radius: 6px;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-canvas);
+            background-image: 
+                radial-gradient(ellipse 65% 50% at 75% 25%, rgba(248, 126, 86, 0.18) 0%, rgba(224, 54, 130, 0.15) 35%, rgba(107, 34, 104, 0.10) 65%, transparent 80%),
+                radial-gradient(ellipse 50% 45% at 85% 45%, rgba(208, 37, 123, 0.14) 0%, rgba(56, 20, 64, 0.08) 60%, transparent 80%);
+            background-attachment: fixed;
+            color: var(--text-body);
+            min-height: 100vh;
+            -webkit-font-smoothing: antialiased;
+            line-height: 1.5;
+        }
+
+        /* Top Header with Prismatic Polygon Accent Bar */
+        .prismatic-bar {
+            height: 4px;
+            width: 100%;
+            background: linear-gradient(90deg, #F87E56 0%, #EE5265 25%, #E03682 50%, #D0257B 75%, #6B2268 100%);
+        }
+        .header {
+            background: rgba(255, 255, 255, 0.92);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border);
+            padding: 22px 36px;
+        }
+        .header-content {
+            max-width: 1160px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .header-title {
+            font-family: Georgia, Garamond, "Times New Roman", serif;
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--text-heading);
+            letter-spacing: -0.02em;
+        }
+        .header-subtitle {
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+        .badge-academic {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 600;
+            padding: 4px 10px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            background: var(--bg-canvas);
+            color: var(--text-muted);
+        }
+
+        .container {
+            max-width: 1160px;
+            margin: 0 auto;
+            padding: 32px 24px 60px;
+        }
+
+        /* Explanatory Banner */
+        .intro-banner {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 22px 28px;
+            margin-bottom: 24px;
+            box-shadow: 0 2px 8px rgba(32, 22, 43, 0.03);
+        }
+        .intro-heading {
+            font-family: Georgia, Garamond, serif;
+            font-size: 18px;
+            color: var(--text-heading);
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+        .intro-text {
+            font-size: 13px;
+            color: var(--text-body);
+            line-height: 1.6;
+        }
+
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 14px;
+            margin-bottom: 24px;
+        }
+        .stat-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 16px 18px;
+            box-shadow: 0 2px 6px rgba(32, 22, 43, 0.02);
+        }
+        .stat-num {
+            font-family: Georgia, Garamond, serif;
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--text-heading);
+        }
+        .stat-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-muted);
+            margin-top: 2px;
+            font-weight: 600;
+        }
+
+        /* Main Workspace: 2 Column Layout */
+        .workspace {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+        }
+
+        @media (max-width: 900px) {
+            .workspace { grid-template-columns: 1fr; }
+            .stats-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+
+        .panel {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 24px 28px;
+            box-shadow: 0 2px 8px rgba(32, 22, 43, 0.03);
+        }
+        .panel-heading {
+            font-family: Georgia, Garamond, serif;
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text-heading);
+            margin-bottom: 14px;
+        }
+
+        /* Presets Strip */
+        .presets-row {
+            margin-bottom: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .presets-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 600;
+            color: var(--text-muted);
+        }
+        .preset-buttons {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .btn-preset {
+            background: #FFFFFF;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 6px 11px;
+            font-size: 12px;
+            color: var(--text-heading);
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .btn-preset:hover {
+            border-color: var(--accent-coral);
+            color: var(--accent-coral);
+        }
+
+        /* Form elements */
+        .form-group {
+            margin-bottom: 14px;
+        }
+        .form-group label {
+            display: block;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-heading);
+            margin-bottom: 6px;
+        }
+        .form-input, .form-textarea {
+            width: 100%;
+            background: #FFFFFF;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 10px 12px;
+            font-size: 13px;
+            color: var(--text-heading);
+            outline: none;
+            font-family: inherit;
+        }
+        .form-input:focus, .form-textarea:focus {
+            border-color: var(--border-focus);
+        }
+        .form-textarea {
+            resize: vertical;
+            min-height: 90px;
+        }
+        .btn-primary {
+            background: var(--accent-plum);
+            color: #FFFFFF;
+            border: none;
+            border-radius: var(--radius);
+            padding: 10px 22px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+        .btn-primary:hover {
+            background: #3B2E4D;
+        }
+
+        /* Result Card */
+        .result-box {
+            margin-top: 18px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            background: #FFFFFF;
+            padding: 18px 20px;
+            display: none;
+            box-shadow: 0 2px 6px rgba(32, 22, 43, 0.02);
+        }
+        .result-title-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        .result-badge {
+            font-size: 12px;
+            font-weight: 600;
+            padding: 3px 9px;
+            border-radius: var(--radius);
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+        }
+        .badge-positive { background: var(--positive-bg); color: var(--positive); border: 1px solid #C3E6CB; }
+        .badge-negative { background: var(--negative-bg); color: var(--negative); border: 1px solid #F5C6CB; }
+        .badge-neutral { background: var(--neutral-bg); color: var(--neutral); border: 1px solid #D6D0C5; }
+        .badge-urgent { background: #BD2130; color: #FFFFFF; border: 1px solid #BD2130; }
+
+        .result-metrics {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+        .metric-cell {
+            background: var(--bg-canvas);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 8px 12px;
+        }
+        .metric-val {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--text-heading);
+        }
+        .metric-desc {
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .result-explanation {
+            font-size: 12px;
+            color: var(--text-body);
+            line-height: 1.5;
+            padding-top: 10px;
+            border-top: 1px solid var(--border);
+        }
+
+        /* Reviews Feed */
+        .feed-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+        .feed-filters {
+            display: flex;
+            gap: 6px;
+        }
+        .filter-btn {
+            background: #FFFFFF;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 4px 10px;
+            font-size: 11px;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .filter-btn.active, .filter-btn:hover {
+            border-color: var(--accent-coral);
+            color: var(--accent-coral);
+        }
+
+        .feed-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            max-height: 520px;
+            overflow-y: auto;
+            padding-right: 4px;
+        }
+        .feed-item {
+            background: #FFFFFF;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 14px 16px;
+        }
+        .feed-item-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            margin-bottom: 6px;
+        }
+        .feed-item-product {
+            font-weight: 600;
+            font-size: 13px;
+            color: var(--text-heading);
+        }
+        .feed-item-date {
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+        .feed-item-text {
+            font-size: 12px;
+            color: var(--text-body);
+            line-height: 1.5;
+            margin-bottom: 8px;
+        }
+        .feed-item-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 11px;
+            color: var(--text-muted);
+            border-top: 1px solid #F0ECE4;
+            padding-top: 6px;
+        }
+        .theme-tag {
+            background: var(--bg-canvas);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 2px 6px;
+            font-size: 10px;
+            color: var(--text-body);
+            margin-right: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="prismatic-bar"></div>
+    <header class="header">
+        <div class="header-content">
+            <div>
+                <h1 class="header-title">MoodMeter</h1>
+                <div class="header-subtitle">Brand Sentiment Intelligence and Automated Triage Platform</div>
+            </div>
+            <div class="badge-academic">AI & Python Industrial Training Project</div>
+        </div>
+    </header>
+
+    <div class="container">
+        <!-- Clear Introduction Banner -->
+        <div class="intro-banner">
+            <h2 class="intro-heading">How MoodMeter Classifies Feedback</h2>
+            <p class="intro-text">
+                MoodMeter evaluates customer feedback using Natural Language Processing (NLP).
+                It computes <strong>sentiment polarity (-1.0 to +1.0)</strong>, tags relevant <strong>department themes</strong> (e.g. Quality, App, Billing),
+                and checks for <strong>critical safety hazards</strong> or defect triggers (e.g. fire, burn, overheat).
+                Urgent feedback is immediately routed to designated teams for resolution.
+            </p>
+        </div>
+
+        <!-- Real Stats Bar -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-num" id="statTotal">-</div>
+                <div class="stat-label">Total Analysed</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-num" id="statPositive" style="color: var(--positive);">-</div>
+                <div class="stat-label">Positive Feedback</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-num" id="statNeutral" style="color: var(--neutral);">-</div>
+                <div class="stat-label">Neutral Inquiries</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-num" id="statNegative" style="color: var(--negative);">-</div>
+                <div class="stat-label">Dissatisfied / Bug</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-num" id="statUrgent" style="color: var(--accent-coral);">-</div>
+                <div class="stat-label">Urgent Safety Flags</div>
+            </div>
+        </div>
+
+        <!-- 2 Column Workspace -->
+        <div class="workspace">
+            <!-- Left: Interactive Tester -->
+            <div class="panel">
+                <h3 class="panel-heading">Test Live Sentiment Classification</h3>
+
+                <!-- Presets for fast examiner demo -->
+                <div class="presets-row">
+                    <span class="presets-label">Click an example to test instantly:</span>
+                    <div class="preset-buttons">
+                        <button type="button" class="btn-preset" onclick="fillExample('positive')">Praise Example</button>
+                        <button type="button" class="btn-preset" onclick="fillExample('negative')">Complaint Example</button>
+                        <button type="button" class="btn-preset" onclick="fillExample('safety')">Safety Hazard Alert</button>
+                    </div>
+                </div>
+
+                <form id="analyseForm" onsubmit="handleAnalyse(event)">
+                    <div class="form-group">
+                        <label for="productName">Product Name</label>
+                        <input type="text" id="productName" class="form-input" placeholder="e.g. SmartWatch X1" value="SmartWatch X1">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="reviewText">Customer Feedback / Review Text</label>
+                        <textarea id="reviewText" class="form-textarea" placeholder="Paste or type customer review text here..." required></textarea>
+                    </div>
+
+                    <button type="submit" class="btn-primary" id="btnSubmit">Run Analysis</button>
+                </form>
+
+                <!-- Output Box -->
+                <div id="resultBox" class="result-box">
+                    <div class="result-title-row">
+                        <strong style="font-size: 13px; color: var(--text-heading);">Classification Result</strong>
+                        <span id="resultBadge" class="result-badge">Positive</span>
+                    </div>
+
+                    <div class="result-metrics">
+                        <div class="metric-cell">
+                            <div class="metric-val" id="metricPolarity">+0.00</div>
+                            <div class="metric-desc">Polarity (-1.0 to +1.0)</div>
+                        </div>
+                        <div class="metric-cell">
+                            <div class="metric-val" id="metricUrgency">Standard</div>
+                            <div class="metric-desc">Priority Level</div>
+                        </div>
+                        <div class="metric-cell">
+                            <div class="metric-val" id="metricTheme">General</div>
+                            <div class="metric-desc">Detected Theme</div>
+                        </div>
+                        <div class="metric-cell">
+                            <div class="metric-val" id="metricTeam">Support</div>
+                            <div class="metric-desc">Suggested Routing</div>
+                        </div>
+                    </div>
+
+                    <div class="result-explanation" id="resultExplanation"></div>
+                </div>
+            </div>
+
+            <!-- Right: Live Feedback Feed -->
+            <div class="panel">
+                <div class="feed-header">
+                    <h3 class="panel-heading" style="margin-bottom: 0;">Verified Feed (<span id="feedCount">0</span>)</h3>
+                    <div class="feed-filters">
+                        <button class="filter-btn active" onclick="setFilter('all', this)">All</button>
+                        <button class="filter-btn" onclick="setFilter('positive', this)">Positive</button>
+                        <button class="filter-btn" onclick="setFilter('negative', this)">Negative</button>
+                        <button class="filter-btn" onclick="setFilter('urgent', this)">Urgent Only</button>
+                    </div>
+                </div>
+
+                <div class="feed-list" id="feedList">
+                    <div style="text-align: center; color: var(--text-muted); padding: 32px 0;">Loading feedback stream...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const EXAMPLES = {
+            positive: {
+                product: "AudioMax 500",
+                text: "The audio clarity and active noise cancellation are superb. Battery lasted through an entire 14-hour flight. Highly recommend!"
+            },
+            negative: {
+                product: "FitBand Pro",
+                text: "The mobile app refuses to sync my step count and crashes every time I open Bluetooth settings. Very frustrating bug."
+            },
+            safety: {
+                product: "SmartWatch X1",
+                text: "Safety alert: the charging port got burning hot and emitted a burning smell while plugged into the wall adapter overnight!"
+            }
+        };
+
+        function fillExample(type) {
+            const ex = EXAMPLES[type];
+            if (!ex) return;
+            document.getElementById('productName').value = ex.product;
+            document.getElementById('reviewText').value = ex.text;
+            handleAnalyse(new Event('submit'));
+        }
+
+        let allReviews = [];
+        let currentFilter = 'all';
+
+        async function loadSummary() {
+            try {
+                const res = await fetch('/api/summary');
+                const data = await res.json();
+                document.getElementById('statTotal').textContent = data.total_reviews || 0;
+                document.getElementById('statPositive').textContent = data.sentiment_distribution?.positive || 0;
+                document.getElementById('statNeutral').textContent = data.sentiment_distribution?.neutral || 0;
+                document.getElementById('statNegative').textContent = data.sentiment_distribution?.negative || 0;
+                document.getElementById('statUrgent').textContent = data.urgent_count || 0;
+            } catch (err) {
+                console.error('Summary error:', err);
+            }
+        }
+
+        async function loadReviews() {
+            try {
+                const res = await fetch('/api/reviews');
+                const data = await res.json();
+                allReviews = data.reviews || [];
+                renderFeed();
+            } catch (err) {
+                console.error('Reviews load error:', err);
+            }
+        }
+
+        function setFilter(filter, el) {
+            currentFilter = filter;
+            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+            el.classList.add('active');
+            renderFeed();
+        }
+
+        function renderFeed() {
+            const list = document.getElementById('feedList');
+            let filtered = allReviews;
+
+            if (currentFilter === 'positive') {
+                filtered = allReviews.filter(r => (r.sentiment?.label || '').toLowerCase() === 'positive');
+            } else if (currentFilter === 'negative') {
+                filtered = allReviews.filter(r => (r.sentiment?.label || '').toLowerCase() === 'negative');
+            } else if (currentFilter === 'urgent') {
+                filtered = allReviews.filter(r => r.urgency?.is_urgent === true);
+            }
+
+            document.getElementById('feedCount').textContent = filtered.length;
+
+            if (filtered.length === 0) {
+                list.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 32px 0;">No reviews match this filter.</div>';
+                return;
+            }
+
+            list.innerHTML = filtered.map(r => {
+                const isUrgent = r.urgency?.is_urgent;
+                const sentimentLabel = r.sentiment?.label || 'Neutral';
+                const badgeClass = isUrgent ? 'badge-urgent' : `badge-${sentimentLabel.toLowerCase()}`;
+                const badgeText = isUrgent ? 'Urgent Alert' : sentimentLabel;
+                const polarityVal = r.sentiment?.polarity !== undefined ? (r.sentiment.polarity >= 0 ? '+' : '') + r.sentiment.polarity.toFixed(2) : '0.00';
+                const themes = (r.themes || []).map(t => `<span class="theme-tag">${escapeHtml(t)}</span>`).join('');
+
+                return `
+                    <div class="feed-item">
+                        <div class="feed-item-top">
+                            <span class="feed-item-product">${escapeHtml(r.product || 'General Feedback')}</span>
+                            <span class="result-badge ${badgeClass}">${badgeText}</span>
+                        </div>
+                        <div class="feed-item-text">${escapeHtml(r.text)}</div>
+                        <div class="feed-item-footer">
+                            <div>${themes || '<span class="theme-tag">General</span>'}</div>
+                            <div>Polarity: <strong>${polarityVal}</strong> &bull; Routing: <strong>${escapeHtml(r.suggested_team || 'Support')}</strong></div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        async function handleAnalyse(e) {
+            if (e && e.preventDefault) e.preventDefault();
+            const text = document.getElementById('reviewText').value.trim();
+            const product = document.getElementById('productName').value.trim();
+            if (!text) return;
+
+            const btn = document.getElementById('btnSubmit');
+            btn.disabled = true;
+            btn.textContent = 'Analysing...';
+
+            try {
+                const res = await fetch('/api/analyse', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ review: { text: text, product: product || 'General Feedback' } })
+                });
+
+                const data = await res.json();
+                const item = (data.results && data.results[0]) ? data.results[0] : null;
+
+                if (!item) {
+                    alert('Analysis failed: No result returned from engine.');
+                    return;
+                }
+
+                // Update output display
+                const box = document.getElementById('resultBox');
+                const badge = document.getElementById('resultBadge');
+                const isUrgent = item.urgency?.is_urgent;
+                const sentimentLabel = item.sentiment?.label || 'Neutral';
+
+                badge.className = 'result-badge ' + (isUrgent ? 'badge-urgent' : `badge-${sentimentLabel.toLowerCase()}`);
+                badge.textContent = isUrgent ? 'Urgent Safety Flag' : sentimentLabel;
+
+                const pol = item.sentiment?.polarity !== undefined ? item.sentiment.polarity : 0;
+                document.getElementById('metricPolarity').textContent = (pol >= 0 ? '+' : '') + pol.toFixed(2);
+                document.getElementById('metricUrgency').textContent = isUrgent ? 'Escalate Immediately' : 'Standard Priority';
+                document.getElementById('metricTheme').textContent = (item.themes && item.themes.length > 0) ? item.themes[0] : 'General';
+                document.getElementById('metricTeam').textContent = item.suggested_team || 'Customer Support';
+                document.getElementById('resultExplanation').textContent = item.triage_explanation || 'Evaluation completed.';
+
+                box.style.display = 'block';
+
+                // Add to active feed and refresh counts
+                allReviews.unshift(item);
+                renderFeed();
+                loadSummary();
+
+            } catch (err) {
+                alert('Analysis error: ' + err.message);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Run Analysis';
+            }
+        }
+
+        function escapeHtml(s) {
+            if (!s) return '';
+            const d = document.createElement('div');
+            d.textContent = s;
+            return d.innerHTML;
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            loadSummary();
+            loadReviews();
+        });
+    </script>
+</body>
+</html>
