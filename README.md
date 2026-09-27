@@ -105,7 +105,9 @@ Open http://127.0.0.1:5000 in your browser.
 MoodMeter/
 ├── index.html                  # Main dashboard page
 ├── vercel.json                 # Vercel static hosting config
-├── app.py                      # Flask backend and NLP logic
+├── app.py                      # Flask web application and API
+├── triage_engine.py            # Core NLP analysis and triage rules
+├── cli.py                      # Command-line interface for terminal usage
 ├── requirements.txt            # Python dependencies
 ├── README.md                   # Documentation
 ├── static/

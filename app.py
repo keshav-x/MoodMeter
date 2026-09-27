@@ -12,8 +12,7 @@ import uuid
 from datetime import datetime, timezone
 
 from flask import Flask, jsonify, render_template, request
-from textblob import TextBlob
-import pandas as pd
+from triage_engine import process_review
 
 # setup flask app and static folder
 app = Flask(__name__, static_folder="static", static_url_path="/static", template_folder=".")
@@ -22,166 +21,17 @@ app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024  # 16 MB upload limit
 # in-memory store for analysed reviews
 _review_store: list[dict] = []
 
-# safety hazard trigger keywords that require immediate escalation
-SAFETY_TRIGGERS = [
-    "fire", "smoke", "spark", "burn", "shock", "exploded", "explosion",
-    "melted", "burning", "hospital", "injury", "bleeding", "hazard",
-    "flame", "flames", "shocked", "overheat", "overheated", "overheating",
-    "caught fire"
-]
 
-
-# check for critical safety hazard keywords
-def check_safety_hazard(text: str) -> bool:
-    text_lower = text.lower()
-    return any(trigger in text_lower for trigger in SAFETY_TRIGGERS)
-
-
-# added sentiment logic using textblob polarity
-def get_sentiment(text: str) -> dict:
-    blob = TextBlob(text)
-    polarity = round(blob.sentiment.polarity, 4)
-    subjectivity = round(blob.sentiment.subjectivity, 4)
-
-    if polarity >= 0.10:
-        label = "Positive"
-    elif polarity <= -0.10:
-        label = "Negative"
-    else:
-        label = "Neutral"
-
-    return {
-        "polarity": polarity,
-        "subjectivity": subjectivity,
-        "label": label,
-    }
-
-
-# theme keywords for department categorization
-THEME_KEYWORDS = {
-    "Product Quality": [
-        "quality", "durability", "material", "build", "broken", "broke",
-        "sturdy", "cheap", "flimsy", "defect", "defective", "hardware",
-        "battery", "sound", "screen", "finish", "craftsmanship", "craft",
-    ],
-    "Customer Service": [
-        "support", "service", "representative", "agent", "call", "chat",
-        "helpful", "rude", "unresponsive", "wait", "hold", "email",
-        "response", "ticket", "polite", "courteous", "attitude",
-    ],
-    "Shipping & Delivery": [
-        "shipping", "delivery", "arrived", "late", "fast", "package",
-        "damaged", "box", "carrier", "tracking", "courier", "dispatch",
-        "delay", "transit", "on time",
-    ],
-    "Pricing & Billing": [
-        "price", "cost", "expensive", "cheap", "refund", "charge",
-        "billing", "subscription", "worth", "value", "overpriced",
-        "fee", "renewal", "discount",
-    ],
-    "App & Software": [
-        "app", "software", "bug", "crash", "freeze", "slow", "update",
-        "sync", "login", "connection", "bluetooth", "interface", "ui",
-        "glitch", "error", "disconnect",
-    ],
-    "Safety & Health": [
-        "fire", "smoke", "spark", "burn", "shock", "injury", "toxic",
-        "harm", "danger", "exploded", "melted", "burning", "hospital",
-        "overheat", "overheated", "hazard", "flame", "flames", "shocked"
-    ],
-}
-
-
-# identify operational themes based on keywords
-def get_themes(text: str) -> list[str]:
-    text_lower = text.lower()
-    matched = []
-    for theme, keywords in THEME_KEYWORDS.items():
-        if any(kw in text_lower for kw in keywords):
-            matched.append(theme)
-    return matched if matched else ["General Feedback"]
-
-
-# triage logic: determine urgency and routing team
-def triage_review(polarity: float, label: str, themes: list[str],
-                  text: str) -> tuple[bool, str, str, str]:
-    text_lower = text.lower()
-    has_safety_theme = "Safety & Health" in themes
-    has_safety_kw = check_safety_hazard(text_lower)
-
-    # route safety hazards to legal and compliance immediately
-    if has_safety_kw or has_safety_theme:
-        return (
-            True,
-            "Flagged as urgent: safety/health triggers detected.",
-            "Legal and Safety Compliance",
-            "Flagged: safety hazard detected. Immediate routing to Legal and Safety Compliance."
-        )
-
-    # route serious software bugs to engineering
-    if "App & Software" in themes and (polarity <= -0.50 or "crash" in text_lower):
-        return (
-            True,
-            "Flagged as urgent: severe software malfunction reported.",
-            "Mobile & QA Engineering",
-            "Urgent bug report: customer reports crash/severe malfunction. Route to Mobile & QA Engineering."
-        )
-
-    # route severe negative feedback for quick recovery
-    if polarity <= -0.65:
-        return (
-            True,
-            "Flagged as urgent: severe customer dissatisfaction (polarity <= -0.65).",
-            "Customer Support (Escalations)",
-            "Critical dissatisfaction: immediate outreach recommended to prevent churn."
-        )
-
-    # default routing based on matched theme
-    team_map = {
-        "Product Quality": "Hardware Engineering",
-        "Customer Service": "Support Operations",
-        "Shipping & Delivery": "Logistics & Fulfillment",
-        "Pricing & Billing": "Finance & Billing",
-        "App & Software": "Mobile & QA Engineering",
-        "General Feedback": "Product Management",
-    }
-    primary_theme = themes[0] if themes else "General Feedback"
-    suggested_team = team_map.get(primary_theme, "Product Management")
-
-    if label == "Negative":
-        explanation = f"Assigned to {suggested_team} for review and follow-up."
-    elif label == "Positive":
-        explanation = f"Routed to {suggested_team} as positive customer feedback."
-    else:
-        explanation = f"Logged for {suggested_team} monitoring."
-
-    return False, "Standard priority.", suggested_team, explanation
-
-
-# run full analysis pipeline on a review record
 def analyse_review(review: dict) -> dict:
+    """Wrapper that enriches review record with date and id."""
     text = review.get("text", "")
-    sentiment = get_sentiment(text)
-    themes = get_themes(text)
-    is_urgent, urgency_exp, team, triage_exp = triage_review(
-        sentiment["polarity"], sentiment["label"], themes, text
-    )
+    product = review.get("product", "Unknown")
+    source = review.get("source", "Web Form")
+    review_id = review.get("id", str(uuid.uuid4())[:8])
 
-    return {
-        "id": review.get("id", str(uuid.uuid4())[:8]),
-        "text": text,
-        "source": review.get("source", "Unknown"),
-        "product": review.get("product", "Unknown"),
-        "date": review.get("date", datetime.now(timezone.utc).strftime("%Y-%m-%d")),
-        "sentiment": sentiment,
-        "themes": themes,
-        "urgency": {
-            "is_urgent": is_urgent,
-            "explanation": urgency_exp,
-        },
-        "suggested_team": team,
-        "triage_explanation": triage_exp,
-    }
+    res = process_review(text=text, product=product, source=source, review_id=review_id)
+    res["date"] = review.get("date", datetime.now(timezone.utc).strftime("%Y-%m-%d"))
+    return res
 
 
 # load sample review data from json file
@@ -211,7 +61,6 @@ def upload():
     product = request.form.get("product", "Unknown")
 
     results = []
-
     if review_text:
         review = {
             "id": f"WEB-{len(_review_store)+1:04d}",
@@ -273,16 +122,14 @@ def api_reviews():
     filtered = _review_store
 
     if sentiment_filter:
-        filtered = [r for r in filtered
-                    if r["sentiment"]["label"].lower() == sentiment_filter.lower()]
+        filtered = [r for r in filtered if r["sentiment"]["label"].lower() == sentiment_filter.lower()]
 
     if urgent_filter is not None:
         is_urg = urgent_filter.lower() in ("true", "1", "yes")
         filtered = [r for r in filtered if r["urgency"]["is_urgent"] == is_urg]
 
     if product_filter:
-        filtered = [r for r in filtered
-                    if product_filter.lower() in r["product"].lower()]
+        filtered = [r for r in filtered if product_filter.lower() in r["product"].lower()]
 
     if limit:
         filtered = filtered[:limit]
@@ -330,9 +177,7 @@ def api_summary():
 
 # start local development server
 if __name__ == "__main__":
-    sample_path = os.path.join(
-        os.path.dirname(__file__), "sample_data", "sample_reviews.json"
-    )
+    sample_path = os.path.join(os.path.dirname(__file__), "sample_data", "sample_reviews.json")
     load_sample_data(sample_path)
     print("MoodMeter starting at http://127.0.0.1:5000")
     app.run(debug=True, host="127.0.0.1", port=5000)
