@@ -1,6 +1,5 @@
 id,product,source,date,text
-R001,AudioMax 500,App Store,2026-06-15,The audio clarity and active noise cancellation are superb. Battery lasted through an entire 14-hour flight. Highly recommend!
-R002,FitBand Pro,Google Play,2026-06-18,The mobile app refuses to sync my step count and crashes every time I open Bluetooth settings. Very frustrating bug.
-R003,SmartWatch X1,Amazon Review,2026-06-22,Safety alert: the charging port got burning hot and emitted a burning smell while plugged into the wall adapter overnight!
-R004,SmartWatch X1,Website Support,2026-06-25,Been waiting 3 weeks for my delivery with zero tracking updates. Customer support has not replied to my emails.
-R005,AudioMax 500,Email Inquiry,2026-06-28,Can I connect these headphones to two devices simultaneously via multipoint bluetooth? Please clarify battery specs.
+REV-001,AudioMax Pro,Customer Review,2026-06-15,The audio clarity and active noise cancellation are superb. Battery lasted through an entire 14-hour flight. Highly recommend!
+REV-002,FitBand Plus,App Store,2026-06-18,The mobile app refuses to sync step count and crashes every time I open Bluetooth settings. Very frustrating bug.
+REV-003,SmartWatch X1,Direct Feedback,2026-06-22,Safety alert: the charging port got burning hot and emitted smoke overnight while plugged into the wall adapter!
+REV-004,SmartWatch X1,Support Ticket,2026-06-28,Can I connect these headphones to two devices simultaneously via multipoint bluetooth? Please clarify battery specs.
