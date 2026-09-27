@@ -39,7 +39,7 @@ import pandas as pd
 # ---------------------------------------------------------------------------
 # App setup
 # ---------------------------------------------------------------------------
-app = Flask(__name__)
+app = Flask(__name__, static_folder="static", static_url_path="/static", template_folder=".")
 app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024  # 16 MB upload limit
 
 # In-memory store for analysed reviews (reset on restart)
@@ -237,7 +237,7 @@ def analyse_review(review: dict) -> dict:
 @app.route("/")
 def dashboard():
     """Render the main dashboard page."""
-    return render_template("dashboard.html", reviews=_review_store)
+    return render_template("index.html", reviews=_review_store)
 
 
 @app.route("/upload", methods=["POST"])
@@ -273,10 +273,10 @@ def upload():
                 _review_store.append(result)
                 results.append(result)
         except Exception as e:
-            return render_template("dashboard.html", reviews=_review_store,
+            return render_template("index.html", reviews=_review_store,
                                    error=f"CSV parse error: {e}")
 
-    return render_template("dashboard.html", reviews=_review_store,
+    return render_template("index.html", reviews=_review_store,
                            latest_count=len(results))
 
 

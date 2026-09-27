@@ -188,16 +188,17 @@ Vercel serves `index.html` directly from its global Edge network. The client-sid
 
 ```
 MoodMeter/
-├── index.html                  # Standalone Vercel Edge frontend (embedded NLP engine)
+├── index.html                  # Standalone Vercel Edge frontend (markup structure)
 ├── vercel.json                 # Vercel deployment configuration
 ├── app.py                      # Flask REST API & TextBlob NLP pipeline
 ├── requirements.txt            # Minimal dependencies (Flask, TextBlob)
 ├── README.md                   # Project documentation & architecture
-├── sample_data/
-│   ├── sample_reviews.json     # 5 curated test reviews across key scenarios
-│   └── sample_reviews.csv      # CSV batch intake sample
-└── templates/
-    └── dashboard.html          # Server-rendered Flask template
+├── static/
+│   ├── style.css               # Executive Earth design system (CSS)
+│   └── engine.js               # Client-side triage & NLP lexicon engine (JS)
+└── sample_data/
+    ├── sample_reviews.json     # 5 curated test reviews across key scenarios
+    └── sample_reviews.csv      # CSV batch intake sample
 ```
 
 ---
