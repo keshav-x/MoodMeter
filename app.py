@@ -130,6 +130,8 @@ def detect_themes(text: str) -> list[str]:
 SAFETY_TRIGGERS: list[str] = [
     "safety", "hazard", "injury", "hurt", "allergic", "health",
     "dangerous", "toxic", "someone gets hurt",
+    "fire", "smoke", "burn", "burning", "overheat", "overheating",
+    "exploded", "explosion", "spark", "shock",
 ]
 
 
